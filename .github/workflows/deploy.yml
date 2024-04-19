@@ -1,18 +1,9 @@
-name: Build and Deploy to Google Cloud Run
-
-on:
-  push:
-    branches:
-      - main  # Triggers the workflow on push events to the main branch.
-
 jobs:
   setup-build-publish-deploy:
-    name: Setup, Build, Publish, and Deploy
-    runs-on: ubuntu-latest  # Specifies the runner environment.
+    runs-on: ubuntu-latest
 
     steps:
     - uses: actions/checkout@v2
-      # Checks out the repository under $GITHUB_WORKSPACE, so your workflow can access it.
 
     - name: Set up Cloud SDK
       uses: google-github-actions/setup-gcloud@v0.2.0
@@ -20,20 +11,16 @@ jobs:
         project_id: ${{ secrets.GCP_PROJECT_ID }}
         service_account_key: ${{ secrets.GCP_SA_KEY }}
         export_default_credentials: true
-      # Configures the Google Cloud SDK with the credentials stored in GitHub Secrets.
 
     - name: Authenticate Docker with GCR
       run: |
-        echo "${{ secrets.GCP_SA_KEY }}" | docker login -u _json_key --password-stdin gcr.io
-      # Authenticates Docker to Google Container Registry using the service account key.
+        echo "${{ secrets.GCP_SA_KEY }}" | docker login -u _json_key --password-stdin https://gcr.io
 
     - name: Build and Push Docker image
       run: |
         docker build -t gcr.io/${{ secrets.GCP_PROJECT_ID }}/spotify-auth-service:latest -f spotify-auth.dockerfile .
         docker push gcr.io/${{ secrets.GCP_PROJECT_ID }}/spotify-auth-service:latest
-      # Builds the Docker image and pushes it to your GCR repository.
 
     - name: Deploy to Cloud Run
       run: |
         gcloud run deploy spotify-auth --image gcr.io/${{ secrets.GCP_PROJECT_ID }}/spotify-auth-service:latest --platform managed --region us-central1 --allow-unauthenticated
-      # Deploys the pushed Docker image to Google Cloud Run, making it accessible publicly.
