@@ -24,11 +24,11 @@ jobs:
 
     - name: Build and Push Docker image
       run: |
-        docker build -t gcr.io/${{ secrets.GCP_PROJECT_ID }}/spotify-auth-service:latest -f spotify-auth.dockerfile .
-        docker push gcr.io/${{ secrets.GCP_PROJECT_ID }}/spotify-auth-service:latest
+        sudo docker build -t gcr.io/${{ secrets.GCP_PROJECT_ID }}/spotify-auth-service:latest -f spotify-auth.dockerfile .
+        sudo docker push gcr.io/${{ secrets.GCP_PROJECT_ID }}/spotify-auth-service:latest
       # Builds a Docker image using your Dockerfile and pushes it to Google Container Registry.
 
     - name: Deploy to Cloud Run
       run: |
-        gcloud run deploy spotify-auth --image gcr.io/${{ secrets.GCP_PROJECT_ID }}/spotify-auth-service:latest --platform managed --region us-central1 --allow-unauthenticated
+        sudo gcloud run deploy spotify-auth --image gcr.io/${{ secrets.GCP_PROJECT_ID }}/spotify-auth-service:latest --platform managed --region us-central1 --allow-unauthenticated
       # Deploys the image to Google Cloud Run, setting it to be accessible publicly.
