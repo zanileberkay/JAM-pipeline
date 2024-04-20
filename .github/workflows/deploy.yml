@@ -3,40 +3,29 @@ name: Build and Deploy to Google Cloud Run
 on:
   push:
     branches:
-      - main  # This workflow triggers on commits pushed to the main branch.
+      - main
 
 jobs:
   build_and_deploy:
-    name: Build and Deploy
-    runs-on: ubuntu-latest  # Specifies the runner environment.
-
+    runs-on: ubuntu-latest
     steps:
-      - name: Checkout Code
-        uses: actions/checkout@v2
-        # Checks out a copy of your repository under $GITHUB_WORKSPACE, so your job can access it.
-
+      - uses: actions/checkout@v2
+      
       - name: Set up Google Cloud CLI
         uses: google-github-actions/setup-gcloud@v0.2.0
         with:
           project_id: ${{ secrets.GCP_PROJECT_ID }}
           service_account_key: ${{ secrets.GCP_SA_KEY }}
           export_default_credentials: true
-        # This action sets up the Google Cloud SDK.
 
       - name: Authenticate Docker
         run: gcloud auth configure-docker
 
       - name: Build Docker Image
-        run: |
-          docker build -t gcr.io/${{ secrets.GCP_PROJECT_ID }}/spotify-auth-service:latest -f spotify-auth.dockerfile .
-        # Builds your Docker image using the Dockerfile.
+        run: docker build -t gcr.io/${{ secrets.GCP_PROJECT_ID }}/spotify-auth-service:latest -f spotify-auth.dockerfile .
 
       - name: Push Docker Image to GCR
-        run: |
-          docker push gcr.io/${{ secrets.GCP_PROJECT_ID }}/spotify-auth-service:latest
-        # Pushes the built image to Google Container Registry.
+        run: docker push gcr.io/${{ secrets.GCP_PROJECT_ID }}/spotify-auth-service:latest
 
       - name: Deploy to Google Cloud Run
-        run: |
-          gcloud run deploy spotify-auth --image gcr.io/${{ secrets.GCP_PROJECT_ID }}/spotify-auth-service:latest --platform managed --region us-central1 --allow-unauthenticated
-        # Deploys the image to Google Cloud Run, setting it to be accessible publicly.
+        run: gcloud run deploy spotify-auth --image gcr.io/${{ secrets.GCP_PROJECT_ID }}/spotify-auth-service:latest --platform managed --region us-central1 --allow-unauthenticated
