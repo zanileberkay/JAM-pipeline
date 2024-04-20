@@ -3,7 +3,7 @@ name: Build and Deploy to Google Cloud Run
 on:
   push:
     branches:
-      - main  # Trigger the workflow only on changes to the main branch.
+      - main  # This workflow triggers on commits pushed to the main branch.
 
 jobs:
   build_and_deploy:
@@ -11,24 +11,27 @@ jobs:
     runs-on: ubuntu-latest  # Specifies the runner environment.
 
     steps:
-      - name: Checkout code
+      - name: Checkout Code
         uses: actions/checkout@v2
-        # Checks out your repository under $GITHUB_WORKSPACE, so the job can access it.
+        # Checks out a copy of your repository under $GITHUB_WORKSPACE, so your job can access it.
 
       - name: Set up Google Cloud CLI
-        uses: google-github-actions/setup-gcloud@master
+        uses: google-github-actions/setup-gcloud@v0.2.0
         with:
           project_id: ${{ secrets.GCP_PROJECT_ID }}
           service_account_key: ${{ secrets.GCP_SA_KEY }}
           export_default_credentials: true
-        # This action configures the Google Cloud CLI with your project and authenticates using a service account.
+        # This action sets up the Google Cloud SDK.
 
-      - name: Build the Docker image
+      - name: Authenticate Docker
+        run: gcloud auth configure-docker
+
+      - name: Build Docker Image
         run: |
           docker build -t gcr.io/${{ secrets.GCP_PROJECT_ID }}/spotify-auth-service:latest -f spotify-auth.dockerfile .
-        # Builds a Docker image using the Dockerfile in your repository.
+        # Builds your Docker image using the Dockerfile.
 
-      - name: Push Docker image to Google Container Registry
+      - name: Push Docker Image to GCR
         run: |
           docker push gcr.io/${{ secrets.GCP_PROJECT_ID }}/spotify-auth-service:latest
         # Pushes the built image to Google Container Registry.
@@ -36,4 +39,4 @@ jobs:
       - name: Deploy to Google Cloud Run
         run: |
           gcloud run deploy spotify-auth --image gcr.io/${{ secrets.GCP_PROJECT_ID }}/spotify-auth-service:latest --platform managed --region us-central1 --allow-unauthenticated
-        # Deploys the image to Google Cloud Run and makes it available publicly.
+        # Deploys the image to Google Cloud Run, setting it to be accessible publicly.
