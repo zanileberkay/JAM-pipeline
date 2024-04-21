@@ -22,79 +22,67 @@ def home():
 
 @app.route('/authorize', methods=['GET'])
 def authorize():
-    try:
-        auth_url = "https://accounts.spotify.com/authorize"
-        params = {
-            'response_type': 'code',
-            'redirect_uri': os.getenv('REDIRECT_URI'),
-            'scope': 'user-read-private user-read-email',
-            'client_id': os.getenv('SPOTIFY_CLIENT_ID')
-        }
-        query = '&'.join([f'{k}={v}' for k, v in params.items()])
-        full_url = f"{auth_url}?{query}"
-        logging.info(f"Redirecting to Spotify authorization URL: {full_url}")
-        return redirect(full_url)
-    except Exception as e:
-        logging.error(f"Error in authorize: {str(e)}")
-        return jsonify({'error': 'Internal Server Error', 'message': str(e)}), 500
+    logging.info("Handling GET request for /authorize")
+    auth_url = "https://accounts.spotify.com/authorize"
+    params = {
+        'response_type': 'code',
+        'redirect_uri': os.getenv('REDIRECT_URI'),
+        'scope': 'user-read-private user-read-email',
+        'client_id': os.getenv('SPOTIFY_CLIENT_ID')
+    }
+    query = '&'.join([f'{k}={v}' for k, v in params.items()])
+    full_url = f"{auth_url}?{query}"
+    logging.info(f"Redirecting to Spotify authorization URL: {full_url}")
+    return redirect(full_url)
 
 @app.route('/callback', methods=['GET', 'POST'])
 def callback():
+    logging.info("Handling {} request for /callback".format(request.method))
     code = request.args.get('code')
     if not code:
         logging.warning("No code provided in callback")
         return "Error: No code provided", 400
-    try:
-        token = get_spotify_token(code)
-        if token:
-            session['spotify_token'] = token
-            logging.info("Token stored in session and redirecting to complete registration")
-            return redirect(url_for('complete_registration'))
-        else:
-            logging.error("Failed to retrieve token")
-            return "Error obtaining token", 500
-    except Exception as e:
-        logging.error(f"Exception in callback: {str(e)}")
-        return jsonify({'error': 'Internal Server Error', 'message': str(e)}), 500
+    token = get_spotify_token(code)
+    if token:
+        session['spotify_token'] = token
+        logging.info("Token stored in session and redirecting to complete registration")
+        return redirect(url_for('complete_registration'))
+    else:
+        logging.error("Failed to retrieve token")
+        return "Error obtaining token", 500
 
 def get_spotify_token(code):
-    try:
-        url = "https://accounts.spotify.com/api/token"
-        payload = {
-            'grant_type': 'authorization_code',
-            'code': code,
-            'redirect_uri': os.getenv('REDIRECT_URI'),
-            'client_id': os.getenv('SPOTIFY_CLIENT_ID'),
-            'client_secret': os.getenv('SPOTIFY_CLIENT_SECRET')
-        }
-        response = requests.post(url, data=payload)
-        if response.status_code == 200:
-            return response.json().get('access_token')
-        else:
-            logging.error(f"Failed to exchange code for token: {response.text}")
-            return None
-    except Exception as e:
-        logging.error(f"Exception in get_spotify_token: {str(e)}")
+    logging.info("Attempting to exchange code for token")
+    url = "https://accounts.spotify.com/api/token"
+    payload = {
+        'grant_type': 'authorization_code',
+        'code': code,
+        'redirect_uri': os.getenv('REDIRECT_URI'),
+        'client_id': os.getenv('SPOTIFY_CLIENT_ID'),
+        'client_secret': os.getenv('SPOTIFY_CLIENT_SECRET')
+    }
+    response = requests.post(url, data=payload)
+    if response.status_code == 200:
+        return response.json().get('access_token')
+    else:
+        logging.error(f"Failed to exchange code for token: {response.text}")
         return None
 
 @app.route('/complete_registration', methods=['POST'])
 def complete_registration():
+    logging.info("Handling POST request for /complete_registration")
     data = request.json or {}
-    try:
-        doc_ref = db.collection(u'users').document(data.get('username'))
-        doc_ref.set({
-            'username': data.get('username'),
-            'email': data.get('email'),
-            'bio': data.get('bio'),
-            'gender': data.get('gender'),
-            'birthday': data.get('birthday'),
-            'spotify_token': session.get('spotify_token', '')
-        })
-        logging.info("User registration completed successfully")
-        return jsonify({'message': 'User registered successfully'}), 201
-    except Exception as e:
-        logging.error(f"Error in complete_registration: {str(e)}")
-        return jsonify({'error': 'Internal Server Error', 'message': str(e)}), 500
+    doc_ref = db.collection(u'users').document(data.get('username'))
+    doc_ref.set({
+        'username': data.get('username'),
+        'email': data.get('email'),
+        'bio': data.get('bio'),
+        'gender': data.get('gender'),
+        'birthday': data.get('birthday'),
+        'spotify_token': session.get('spotify_token', '')
+    })
+    logging.info("User registration completed successfully")
+    return jsonify({'message': 'User registered successfully'}), 201
 
 if __name__ == '__main__':
-    app.run(host='0.0.0.0', port=int(os.environ.get('PORT', 8080)))#
+    app.run(host='0.0.0.0', port=int(os.environ.get('PORT', 8080)))
