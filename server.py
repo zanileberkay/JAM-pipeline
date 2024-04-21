@@ -22,18 +22,37 @@ def authorize():
     full_url = f"{auth_url}?{query}"
     return redirect(full_url)
 
-@app.route('/callback', methods=['GET'])
+@app.route('/callback', methods=['GET', 'POST'])
 def callback():
     """ Handles the callback after Spotify redirects back with a code. """
-    code = request.args.get('code')
-    if not code:
-        return "Error: No code provided", 400
-    token = get_spotify_token(code)
-    if token:
-        session['spotify_token'] = token
-        return redirect(url_for('signup'))
+    if request.method == 'GET':
+        code = request.args.get('code')
+        if not code:
+            return "Error: No code provided", 400
+        token = get_spotify_token(code)
+        if token:
+            session['spotify_token'] = token
+            # Redirect using POST method via JavaScript to ensure correct method is used
+            return '''
+            <html>
+                <head>
+                    <title>Redirecting...</title>
+                </head>
+                <body>
+                    <form id="redirectForm" action="{}" method="post">
+                        <input type="hidden" name="token" value="{}">
+                    </form>
+                    <script type="text/javascript">
+                        document.getElementById('redirectForm').submit();
+                    </script>
+                </body>
+            </html>
+            '''.format(url_for('signup'), token)
+        else:
+            return "Error obtaining token", 500
     else:
-        return "Error obtaining token", 500
+        # POST request processing can be added here if needed
+        return "POST request processed", 200
 
 def get_spotify_token(code):
     """ Exchanges the authorization code for an access token from Spotify. """
@@ -50,12 +69,17 @@ def get_spotify_token(code):
         return response.json()['access_token']
     return None
 
-@app.route('/signup', methods=['GET'])
+@app.route('/signup', methods=['GET', 'POST'])
 def signup():
     """ Shows the signup page only if the user has a valid token stored in session. """
-    if 'spotify_token' in session:
-        return 'Sign Up Page Content Here'
-    return redirect(url_for('authorize'))
+    if request.method == 'GET':
+        if 'spotify_token' in session:
+            return 'Sign Up Page Content Here'
+        else:
+            return redirect(url_for('authorize'))
+    elif request.method == 'POST':
+        # Handle POST-specific logic if necessary
+        return 'Sign Up Page Content Here - POST'
 
 if __name__ == '__main__':
     app.run(debug=True)
