@@ -3,6 +3,9 @@ import os
 import requests
 from dotenv import load_dotenv
 import logging
+import firebase_admin
+from firebase_admin import credentials
+from firebase_admin import firestore
 
 load_dotenv()  # Load environment variables from .env file
 app = Flask(__name__)
@@ -47,12 +50,29 @@ def get_spotify_token(code):
         return response.json()['access_token']
     return None
 
-@app.route('/signup', methods=['GET'])
+load_dotenv()  # Load environment variables from .env file
+app = Flask(__name__)
+app.config['SECRET_KEY'] = os.getenv('SECRET_KEY')
+
+# Initialize Firebase Admin
+cred = credentials.Certificate('path/to/your/firebase-adminsdk.json')
+firebase_admin.initialize_app(cred)
+db = firestore.client()
+
+@app.route('/signup', methods=['POST'])
 def signup():
+    user_data = request.json
     if 'spotify_token' in session:
-        return 'Sign Up Page Content Here'
-    return redirect(url_for('authorize'))
+        user_ref = db.collection('users').document(user_data['email'])
+        user_ref.set({
+            'email': user_data['email'],
+            'gender': user_data['gender'],
+            'bio': user_data['bio']
+        })
+        return jsonify({"status": "User registered"}), 200
+    return jsonify({"error": "Unauthorized"}), 401
 
 if __name__ == '__main__':
-    port = int(os.getenv('PORT', 8080))  # Use PORT environment variable if it's available
-    app.run(host='0.0.0.0', port=port, debug=True)  # Ensure the app listens on all interfaces and correct port spotify-auth.dockerfile: FROM python:3.9-slim
+    port = int(os.getenv('PORT', 8080))
+    app.run(host='0.0.0.0', port=port, debug=True)
+
