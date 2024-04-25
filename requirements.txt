@@ -1,5 +1,5 @@
 Flask
-google-cloud-firestore
 requests
 python-dotenv
-firebase-admin>=5.0.0
+firebase-admin
+google-cloud-firestore
