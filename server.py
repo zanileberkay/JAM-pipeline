@@ -3,10 +3,17 @@ import os
 import requests
 from dotenv import load_dotenv
 import logging
+import firebase_admin
+from firebase_admin import credentials, firestore
 
 load_dotenv()  # Load environment variables from .env file
 app = Flask(__name__)
 app.config['SECRET_KEY'] = os.getenv('SECRET_KEY')
+
+# Initialize Firebase Admin
+cred = credentials.Certificate('path_to_your_service_account_key.json')
+firebase_admin.initialize_app(cred)
+db = firestore.client()
 
 @app.route('/authorize', methods=['GET'])
 def authorize():
@@ -47,12 +54,24 @@ def get_spotify_token(code):
         return response.json()['access_token']
     return None
 
-@app.route('/signup', methods=['GET'])
+@app.route('/signup', methods=['POST'])
 def signup():
+    data = request.json
     if 'spotify_token' in session:
-        return 'Sign Up Page Content Here'
-    return redirect(url_for('authorize'))
+        # Add user profile data to Firestore
+        user_ref = db.collection('users').document(data['email'])
+        user_ref.set({
+            'name': data['name'],
+            'nickname': data['nickname'],
+            'email': data['email'],
+            'biography': data['biography'],
+            'dob': data['dob'],
+            'gender': data['gender'],
+            'spotify_token': session['spotify_token']
+        })
+        return jsonify({"status": "success"}), 200
+    return jsonify({"error": "Authorization required"}), 401
 
 if __name__ == '__main__':
-    port = int(os.getenv('PORT', 8080))  # Use PORT environment variable if it's available
-    app.run(host='0.0.0.0', port=port, debug=True)  # Ensure the app listens on all interfaces and correct port
+    port = int(os.getenv('PORT', 8080))
+    app.run(host='0.0.0.0', port=port, debug=True)
