@@ -61,16 +61,25 @@ db = firestore.client()
 
 @app.route('/signup', methods=['POST'])
 def signup():
-    user_data = request.json
     if 'spotify_token' in session:
+        # Parse JSON data sent from the Flutter app
+        user_data = request.get_json()
+        if not user_data:
+            return jsonify({"error": "No data provided"}), 400
+
+        # Use Firestore to save the user data
         user_ref = db.collection('users').document(user_data['email'])
         user_ref.set({
+            'name': user_data['name'],
+            'nickname': user_data['nickname'],
             'email': user_data['email'],
-            'gender': user_data['gender'],
-            'bio': user_data['bio']
+            'bio': user_data['biography'],
+            'dob': user_data['dob'],
+            'gender': user_data['gender']
         })
         return jsonify({"status": "User registered"}), 200
-    return jsonify({"error": "Unauthorized"}), 401
+    else:
+        return jsonify({"error": "Unauthorized"}), 401
 
 if __name__ == '__main__':
     port = int(os.getenv('PORT', 8080))
